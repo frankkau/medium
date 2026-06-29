@@ -4,9 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Authentication.Controllers;
 
-
-
-
 [ApiController]
 [Route("api/global/tenants")] // Standardized infrastructure administrative endpoint
 public class TenantsController : ControllerBase
@@ -69,7 +66,7 @@ public class TenantsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, [FromBody] UpdateTenantRequest request)
+    public async Task<IActionResult> Update(string id, [FromBody] UpdateTenantDto request)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 

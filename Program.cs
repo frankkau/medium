@@ -25,7 +25,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
-builder.Services.AddIdentity<User, IdentityRole>(options => {
+builder.Services.AddIdentity<User, ApplicationRole>(options =>{
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequireUppercase = true;
@@ -82,7 +82,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowNextJs", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://192.168.43.15:3000")
+        policy.WithOrigins(            
+                "http://localhost:3000",
+                "http://192.168.43.15:3000",
+                "http://beta.192.168.43.15:3000",
+                "http://alpha.192.168.43.15:3000",
+                "http://beta.localhost:3000",
+                "http://alpha.localhost:3000"
+               )
               .AllowCredentials()
               .AllowAnyHeader()
               .AllowAnyMethod();
@@ -91,18 +98,24 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
-app.UseMiddleware<TenantResolverMiddleware>();
-// === Middleware Pipeline ===
-app.UseHttpsRedirection();
 
+// 1. Move CORS to the absolute top of the pipeline
 app.UseCors("AllowNextJs");
 
-app.UseAuthentication();   // ← Must come before UseAuthorization()
+// 2. HTTPS redirection comes after CORS handles preflights
+app.UseHttpsRedirection();
+
+// 3. Resolve tenants AFTER CORS has verified the request origin
+app.UseMiddleware<TenantResolverMiddleware>();
+
+// 4. Finally, process authentication, authorization, and routing
+app.UseAuthentication();   
 app.UseAuthorization();
 
 app.MapControllers();
@@ -112,12 +125,13 @@ using (var scope = app.Services.CreateScope())
     var context = services.GetRequiredService<ApplicationDbContext>();
     var userManager = services.GetRequiredService<UserManager<User>>();
     
-    // 1. Fetch the TenantService from the current scope
+    // FIX 1: Resolve the newly configured RoleManager for tenant isolation
+    var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
     var tenantService = services.GetRequiredService<ITenantService>();
 
     context.Database.EnsureCreated();
 
-    // 2. Seed Tenants (Tenants themselves don't implement IMustHaveTenant, so this passes safely)
+    // 1. Seed Tenants
     if (!context.Tenants.Any())
     {
         context.Tenants.AddRange(
@@ -127,11 +141,19 @@ using (var scope = app.Services.CreateScope())
         context.SaveChanges();
     }
 
-    // 3. Seed Alpha Users
+    // 2. Seed Alpha Users & Roles
     if (!context.Users.IgnoreQueryFilters().Any(u => u.UserName == "teacher@alpha.com"))
     {
-        // CRITICAL: Explicitly set the tenant state in the service so DbContext can resolve it
+        // Explicitly target the Alpha context
         tenantService.SetTenant("alpha"); 
+
+        // FIX 2: Create the role specifically within the alpha tenant boundary
+        const string alphaRoleName = "Teacher";
+        if (!await roleManager.RoleExistsAsync(alphaRoleName))
+        {
+            // Note: DB Tenant tracking assigns TenantId auto-magically here on Save
+            await roleManager.CreateAsync(new ApplicationRole { Name = alphaRoleName });
+        }
 
         var alphaUser = new User
         {
@@ -148,13 +170,23 @@ using (var scope = app.Services.CreateScope())
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             throw new Exception($"Failed to seed Alpha user: {errors}");
         }
+
+        // FIX 3: Securely attach the user to the tenant role
+        await userManager.AddToRoleAsync(alphaUser, alphaRoleName);
     }
 
-    // 4. Seed Beta Users
+    // 3. Seed Beta Users & Roles
     if (!context.Users.IgnoreQueryFilters().Any(u => u.UserName == "admin@beta.com"))
     {
-        // CRITICAL: Change the tenant state to beta before running the user manager creation
+        // Switch execution context to the Beta context
         tenantService.SetTenant("beta"); 
+
+        // FIX 4: Create the role specifically within the beta tenant boundary
+        const string betaRoleName = "Admin";
+        if (!await roleManager.RoleExistsAsync(betaRoleName))
+        {
+            await roleManager.CreateAsync(new ApplicationRole { Name = betaRoleName });
+        }
 
         var betaUser = new User
         {
@@ -171,6 +203,10 @@ using (var scope = app.Services.CreateScope())
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             throw new Exception($"Failed to seed Beta user: {errors}");
         }
+
+        // FIX 5: Securely attach the user to the tenant role
+        await userManager.AddToRoleAsync(betaUser, betaRoleName);
     }
 }
+
 app.Run();

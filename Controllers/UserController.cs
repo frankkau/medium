@@ -48,24 +48,36 @@ public class UserController : ControllerBase
     [HttpGet("profile")]
     public async Task<IActionResult> GetProfile()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var user = await _userManager.FindByIdAsync(userId!);
+       var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new { message = "Invalid token claims context." });
+        }
 
-        if (user == null) return NotFound();
+        // 2. Fetch the user (Your DbContext global filter implicitly makes sure 
+        // they can only be found if they belong to the current active tenant)
+        var user = await _userManager.FindByIdAsync(userId);
+        
+        if (user == null)
+        {
+            return NotFound(new { message = "User not found within this tenant scope." });
+        }
 
+        // 3. Retrieve the tenant-restricted roles mapped to this user
+        var roles = await _userManager.GetRolesAsync(user);
+
+        // 4. Return clean payload back to your Next.js application
         return Ok(new
         {
             user.Id,
             user.Email,
-            user.UserName,
-            user.FullName
+            user.FullName,
+            user.TenantId,
+            Roles = roles // E.g., ["Admin"] or ["Teacher"]
         });
+    
     }
 
-    [HttpGet("admin-only")]
-    [Authorize(Roles = "Admin")]   // Role-based authorization
-    public IActionResult AdminOnly()
-    {
-        return Ok("Admin content");
-    }
+   
 }

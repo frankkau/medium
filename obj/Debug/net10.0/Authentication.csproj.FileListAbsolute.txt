@@ -145,6 +145,7 @@ C:\Users\FRANK\Desktop\schoolManagementSystem\Authentication\obj\Debug\net10.0\A
 C:\Users\FRANK\Desktop\schoolManagementSystem\Authentication\obj\Debug\net10.0\Authentication.csproj.CoreCompileInputs.cache
 C:\Users\FRANK\Desktop\schoolManagementSystem\Authentication\obj\Debug\net10.0\Authentication.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\FRANK\Desktop\schoolManagementSystem\Authentication\obj\Debug\net10.0\Authentication.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\FRANK\Desktop\schoolManagementSystem\Authentication\obj\Debug\net10.0\Authentication.sourcelink.json
 C:\Users\FRANK\Desktop\schoolManagementSystem\Authentication\obj\Debug\net10.0\rjimswa.dswa.cache.json
 C:\Users\FRANK\Desktop\schoolManagementSystem\Authentication\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 C:\Users\FRANK\Desktop\schoolManagementSystem\Authentication\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Authentication.Data;
 
-public class ApplicationDbContext : IdentityDbContext<User>
+public class ApplicationDbContext : IdentityDbContext<User,ApplicationRole, string>
 {
     private readonly ITenantService _tenantService;
 
@@ -35,6 +35,8 @@ public class ApplicationDbContext : IdentityDbContext<User>
         // to allowing the evaluation, preventing startup application crashes.
         builder.Entity<User>()
             .HasQueryFilter(u => u.TenantId == (_tenantService.GetCurrentTenantId() ?? u.TenantId));
+        builder.Entity<ApplicationRole>()
+                .HasQueryFilter(r => r.TenantId == (_tenantService.GetCurrentTenantId() ?? r.TenantId));
 
         builder.Entity<RefreshToken>()
             .HasQueryFilter(rt => rt.TenantId == (_tenantService.GetCurrentTenantId() ?? rt.TenantId));
@@ -47,6 +49,11 @@ public class ApplicationDbContext : IdentityDbContext<User>
         builder.Entity<RefreshToken>()
             .HasIndex(rt => new { rt.TenantId, rt.Token })
             .HasDatabaseName("IX_RefreshToken_Tenant_Token");
+            
+        builder.Entity<ApplicationRole>()
+            .HasIndex(r => new { r.TenantId, r.NormalizedName })
+            .HasDatabaseName("IX_Role_Tenant_Name")
+            .IsUnique();
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)

@@ -33,13 +33,40 @@ public class TenantAdminService : ITenantAdminService
                 Id = request.Id.Trim(),
                 Name = request.Name.Trim(),
                 Subdomain = cleanedSubdomain,
+                Motto =request.Motto,
+                MissionStatement = request.MissionStatement,
+                VisionStatement = request.MissionStatement,
+                LogoUrl = request.LogoUrl,
+                FaviconUrl = request.FaviconUrl,
+                PrimaryColor = request.PrimaryColor,                
+                SecondaryColor = request.SecondaryColor,
+                ContactEmail = request.ContactEmail,
+                ContactPhone = request.ContactPhone,
+                PhysicalAddress = request.PhysicalAddress,
+                // CreatedAt = request.DateTime.UtcNow,
                 IsActive = true
             };
 
+            _logger.LogInformation("Before saving tenant...");
             await _repository.AddAsync(tenant);
-            _logger.LogInformation("Successfully initialized new tenant structure: {TenantId} on subdomain {Subdomain}", tenant.Id, tenant.Subdomain);
-
-            return new TenantResponse(tenant.Id, tenant.Name, tenant.Subdomain, tenant.IsActive);
+            _logger.LogInformation("After saving tenan,t...");
+            return new TenantResponse(
+                tenant.Id,
+                tenant.Name,
+                tenant.Subdomain,
+                tenant.Motto,
+                tenant.MissionStatement,
+                tenant.VisionStatement,
+                tenant.LogoUrl,
+                tenant.FaviconUrl,
+                tenant.PrimaryColor,
+                tenant.SecondaryColor,
+                tenant.ContactEmail,
+                tenant.ContactPhone,
+                tenant.PhysicalAddress,
+                tenant.IsActive,
+                tenant.CreatedAt
+            );
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
         {
@@ -52,10 +79,26 @@ public class TenantAdminService : ITenantAdminService
     {
         try
         {
-            var tenant = await _repository.GetByIdAsync(id);
+            var tenant = await _repository.GetBySubdomainAsync(id);
             if (tenant == null) return null;
 
-            return new TenantResponse(tenant.Id, tenant.Name, tenant.Subdomain, tenant.IsActive);
+            return new TenantResponse(
+                tenant.Id,
+                tenant.Name,
+                tenant.Subdomain,
+                tenant.Motto,
+                tenant.MissionStatement,
+                tenant.VisionStatement,
+                tenant.LogoUrl,
+                tenant.FaviconUrl,
+                tenant.PrimaryColor,
+                tenant.SecondaryColor,
+                tenant.ContactEmail,
+                tenant.ContactPhone,
+                tenant.PhysicalAddress,
+                tenant.IsActive,
+                tenant.CreatedAt
+            );
         }
         catch (Exception ex)
         {
@@ -69,7 +112,23 @@ public class TenantAdminService : ITenantAdminService
         try
         {
             var tenants = await _repository.GetAllAsync();
-            return tenants.Select(t => new TenantResponse(t.Id, t.Name, t.Subdomain, t.IsActive));
+            return tenants.Select(t => new TenantResponse(
+                t.Id,
+                t.Name,
+                t.Subdomain,
+                t.Motto,
+                t.MissionStatement,
+                t.VisionStatement,
+                t.LogoUrl,
+                t.FaviconUrl,
+                t.PrimaryColor,
+                t.SecondaryColor,
+                t.ContactEmail,
+                t.ContactPhone,
+                t.PhysicalAddress,
+                t.IsActive,
+                t.CreatedAt
+            ));
         }
         catch (Exception ex)
         {
@@ -78,21 +137,58 @@ public class TenantAdminService : ITenantAdminService
         }
     }
 
-    public async Task<TenantResponse> UpdateTenantAsync(string id, UpdateTenantRequest request)
+    public async Task<TenantResponse> UpdateTenantAsync(string id, UpdateTenantDto request)
     {
         try
         {
-            var tenant = await _repository.GetByIdAsync(id) 
-                ?? throw new KeyNotFoundException($"Tenant profile reference ID '{id}' could not be resolved.");
+        // Change this line inside your TenantAdminService.cs
+         var tenant = await _repository.GetByIdOrSubdomainAsync(id)
+                 ?? throw new KeyNotFoundException($"Tenant profile with subdomain '{id}' could not be resolved.");
+        // --- Core Branding & Identity ---
+        tenant.Name = request.Name?.Trim() ?? tenant.Name;
+        tenant.Motto = request.Motto?.Trim() ?? tenant.Motto;
+        tenant.MissionStatement = request.MissionStatement?.Trim() ?? tenant.MissionStatement;
+        tenant.VisionStatement = request.VisionStatement?.Trim() ?? tenant.VisionStatement;
+        tenant.LogoUrl = request.LogoUrl?.Trim() ?? tenant.LogoUrl;
+        tenant.FaviconUrl = request.FaviconUrl?.Trim() ?? tenant.FaviconUrl;
 
-            tenant.Name = request.Name.Trim();
-            tenant.IsActive = request.IsActive;
+        // --- Dynamic UI Customization (Theme Matching) ---
+        tenant.PrimaryColor = request.PrimaryColor?.Trim() ?? tenant.PrimaryColor;
+        tenant.SecondaryColor = request.SecondaryColor?.Trim() ?? tenant.SecondaryColor;
 
-            await _repository.UpdateAsync(tenant);
-            _logger.LogInformation("Tenant modification sequence verified for Target ID: {TenantId}", id);
+        // --- Official Infrastructure & Contact Metadata ---
+        tenant.ContactEmail = request.ContactEmail?.Trim() ?? tenant.ContactEmail;
+        tenant.ContactPhone = request.ContactPhone?.Trim() ?? tenant.ContactPhone;
+        tenant.PhysicalAddress = request.PhysicalAddress?.Trim() ?? tenant.PhysicalAddress;
 
-            return new TenantResponse(tenant.Id, tenant.Name, tenant.Subdomain, tenant.IsActive);
-        }
+        // --- Academic & System State Controls ---
+        // tenant.CurrentAcademicYear = request.CurrentAcademicYear?.Trim() ?? tenant.CurrentAcademicYear;
+        // tenant.CurrentTermOrSemester = request.CurrentTermOrSemester?.Trim() ?? tenant.CurrentTermOrSemester;
+        tenant.IsActive = request.IsActive ?? tenant.IsActive;
+
+        // Commit mutations to the database provider
+        await _repository.UpdateAsync(tenant);
+        _logger.LogInformation("Tenant modification sequence verified for Target ID: {TenantId}", id);
+
+        // Return the fully populated structural DTO response
+        return new TenantResponse(
+            tenant.Id,
+            tenant.Name,
+            tenant.Subdomain,
+            tenant.Motto,
+            tenant.MissionStatement,
+            tenant.VisionStatement,
+            tenant.LogoUrl,
+            tenant.FaviconUrl,
+            tenant.PrimaryColor,
+            tenant.SecondaryColor,
+            tenant.ContactEmail,
+            tenant.ContactPhone,
+            tenant.PhysicalAddress,           
+            tenant.IsActive,
+            tenant.CreatedAt
+        );
+                }
         catch (Exception ex) when (ex is not KeyNotFoundException)
         {
             _logger.LogError(ex, "Unexpected mutation runtime fault updating tenant ID {TenantId}", id);
@@ -104,7 +200,7 @@ public class TenantAdminService : ITenantAdminService
     {
         try
         {
-            var tenant = await _repository.GetByIdAsync(id);
+            var tenant = await _repository.GetByIdOrSubdomainAsync(id);
             if (tenant == null) return false;
 
             await _repository.DeleteAsync(tenant);
