@@ -15,7 +15,7 @@
           "Microsoft.EntityFrameworkCore": "10.0.8",
           "Microsoft.EntityFrameworkCore.Design": "10.0.8",
           "Microsoft.EntityFrameworkCore.SqlServer": "10.0.8",
-          "Scalar.AspNetCore": "2.14.14",
+          "Scalar.AspNetCore": "2.16.5",
           "System.IdentityModel.Tokens.Jwt": "8.18.0"
         },
         "runtime": {
@@ -684,11 +684,11 @@
           }
         }
       },
-      "Scalar.AspNetCore/2.14.14": {
+      "Scalar.AspNetCore/2.16.5": {
         "runtime": {
           "lib/net10.0/Scalar.AspNetCore.dll": {
-            "assemblyVersion": "2.14.14.0",
-            "fileVersion": "2.14.14.0"
+            "assemblyVersion": "2.16.5.0",
+            "fileVersion": "2.16.5.0"
           }
         }
       },
@@ -1070,12 +1070,12 @@
       "path": "newtonsoft.json/13.0.3",
       "hashPath": "newtonsoft.json.13.0.3.nupkg.sha512"
     },
-    "Scalar.AspNetCore/2.14.14": {
+    "Scalar.AspNetCore/2.16.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-xNa3MadDudKk7y+0gQPBQihVL+JxGP3KNZHB4Zl2W42ATFIffHHHBjsuyKJ4YPUnnA7NUiHR/diqV/FTZC9dkg==",
-      "path": "scalar.aspnetcore/2.14.14",
-      "hashPath": "scalar.aspnetcore.2.14.14.nupkg.sha512"
+      "sha512": "sha512-194DwaZqe9Cd4nJPdY0c7/3ldLhxtgiMMAlWsgGdKuDLvGgKh7Poozd12nowxFS3ytKYzMcyMPjCIWww5n0hDA==",
+      "path": "scalar.aspnetcore/2.16.5",
+      "hashPath": "scalar.aspnetcore.2.16.5.nupkg.sha512"
     },
     "System.ClientModel/1.5.1": {
       "type": "package",

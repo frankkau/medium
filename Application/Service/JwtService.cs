@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Authentication.Models.Entity;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 
 namespace Authentication.Application.Service;
@@ -10,15 +11,23 @@ namespace Authentication.Application.Service;
 public class JwtService
 {
     private readonly IConfiguration _config;
+    private readonly UserManager<User> _userManager;
 
-    public JwtService(IConfiguration config) => _config = config;
+    public JwtService(IConfiguration config, UserManager<User> userManager)
+    {
+         _config = config;
+         _userManager = userManager;
+    } 
 
-    public Task<string> GenerateAccessToken(User user)
+    public async Task<string> GenerateAccessToken(User user)
     {
         // Fail-safe validation to prevent generating a token with empty data
         if (user == null) throw new ArgumentNullException(nameof(user));
         if (string.IsNullOrEmpty(user.TenantId)) 
             throw new InvalidOperationException("Cannot generate access token for a user without a valid TenantId.");
+
+        // 1. Fetch the user's assigned roles asynchronously from Identity
+        var roles = await _userManager.GetRolesAsync(user);
 
         var claims = new List<Claim>
         {
@@ -30,6 +39,12 @@ public class JwtService
             // Securely embeds the tenant context into the cryptographically signed JWT payload
             new Claim("tenant_id", user.TenantId)
         };
+
+        // 2. Append each role as a separate ClaimTypes.Role claim
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var jwtKey = _config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Secret Key is missing from configuration.");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
@@ -47,10 +62,8 @@ public class JwtService
             signingCredentials: creds
         );
 
-        var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-        
-        // Since there are no asynchronous await calls inside this method, 
-        // we use Task.FromResult to cleanly satisfy the Task return signature without compiler overhead.
-        return Task.FromResult(tokenString);
+        // 3. Directly return the generated token string. 
+        // Because we are now genuinely awaiting `GetRolesAsync`, we no longer need Task.FromResult.
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

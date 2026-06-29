@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Authentication.Models.Dtos;
 using Authentication.Models.Entity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,10 +14,12 @@ namespace Authentication.Controllers;
 public class UserController : ControllerBase
 {
     private readonly UserManager<User> _userManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
 
-    public UserController(UserManager<User> userManager)
+    public UserController(UserManager<User> userManager, RoleManager<ApplicationRole> roleManager)
     {
         _userManager = userManager;
+        _roleManager = roleManager;
     }
 
     [HttpGet]
@@ -78,6 +81,4 @@ public class UserController : ControllerBase
         });
     
     }
-
-   
 }

@@ -886,7 +886,7 @@
           }
         }
       },
-      "Scalar.AspNetCore/2.14.14": {
+      "Scalar.AspNetCore/2.16.5": {
         "type": "package",
         "compile": {
           "lib/net10.0/Scalar.AspNetCore.dll": {
@@ -2936,10 +2936,10 @@
         "packageIcon.png"
       ]
     },
-    "Scalar.AspNetCore/2.14.14": {
-      "sha512": "xNa3MadDudKk7y+0gQPBQihVL+JxGP3KNZHB4Zl2W42ATFIffHHHBjsuyKJ4YPUnnA7NUiHR/diqV/FTZC9dkg==",
+    "Scalar.AspNetCore/2.16.5": {
+      "sha512": "194DwaZqe9Cd4nJPdY0c7/3ldLhxtgiMMAlWsgGdKuDLvGgKh7Poozd12nowxFS3ytKYzMcyMPjCIWww5n0hDA==",
       "type": "package",
-      "path": "scalar.aspnetcore/2.14.14",
+      "path": "scalar.aspnetcore/2.16.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -2951,7 +2951,7 @@
         "lib/net8.0/Scalar.AspNetCore.xml",
         "lib/net9.0/Scalar.AspNetCore.dll",
         "lib/net9.0/Scalar.AspNetCore.xml",
-        "scalar.aspnetcore.2.14.14.nupkg.sha512",
+        "scalar.aspnetcore.2.16.5.nupkg.sha512",
         "scalar.aspnetcore.nuspec"
       ]
     },
@@ -3322,7 +3322,7 @@
       "Microsoft.EntityFrameworkCore.Design >= 10.0.8",
       "Microsoft.EntityFrameworkCore.SqlServer >= 10.0.8",
       "Microsoft.EntityFrameworkCore.Tools >= 10.0.8",
-      "Scalar.AspNetCore >= 2.14.14",
+      "Scalar.AspNetCore >= 2.16.5",
       "System.IdentityModel.Tokens.Jwt >= 8.18.0"
     ]
   },
@@ -3417,7 +3417,7 @@
           },
           "Scalar.AspNetCore": {
             "target": "Package",
-            "version": "[2.14.14, )"
+            "version": "[2.16.5, )"
           },
           "System.IdentityModel.Tokens.Jwt": {
             "target": "Package",

@@ -1,11 +1,14 @@
 using Authentication.Application.IServices;
 using Authentication.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Authentication.Controllers;
 
 [ApiController]
-[Route("api/global/tenants")] // Standardized infrastructure administrative endpoint
+[Route("api/global/tenants")] 
+// [Authorize(Roles ="Admin")]
+
 public class TenantsController : ControllerBase
 {
     private readonly ITenantAdminService _tenantService;
@@ -16,6 +19,7 @@ public class TenantsController : ControllerBase
     }
 
     [HttpPost]
+
     public async Task<IActionResult> Create([FromBody] CreateTenantRequest request)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);

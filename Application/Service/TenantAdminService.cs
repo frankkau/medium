@@ -2,79 +2,98 @@ using Authentication.Application.IServices;
 using Authentication.Models.Dtos;
 using Authentication.Models.Entity;
 
+
 namespace Authentication.Application.Service;
 
 public class TenantAdminService : ITenantAdminService
 {
+   
     private readonly ITenantRepository _repository;
+  
     private readonly ILogger<TenantAdminService> _logger;
 
-    public TenantAdminService(ITenantRepository repository, ILogger<TenantAdminService> logger)
+
+
+    public TenantAdminService( ITenantRepository repository,  ILogger<TenantAdminService> logger)
     {
         _repository = repository;
         _logger = logger;
+       
     }
 
     public async Task<TenantResponse> CreateTenantAsync(CreateTenantRequest request)
+{
+    try
     {
-        try
+        var cleanedSubdomain = request.Subdomain.ToLower().Trim();
+        
+        // 1. Business Validation Rule: Subdomains must be unique across the SaaS platform
+        var existingTenant = await _repository.GetBySubdomainAsync(cleanedSubdomain);
+        if (existingTenant != null)
         {
-            var cleanedSubdomain = request.Subdomain.ToLower().Trim();
-            
-            // Business Validation Rule: Subdomains must be unique across the SaaS platform
-            var existingTenant = await _repository.GetBySubdomainAsync(cleanedSubdomain);
-            if (existingTenant != null)
-            {
-                throw new InvalidOperationException($"Subdomain '{cleanedSubdomain}' is already assigned to an active tenant.");
-            }
-
-            var tenant = new Tenant
-            {
-                Id = request.Id.Trim(),
-                Name = request.Name.Trim(),
-                Subdomain = cleanedSubdomain,
-                Motto =request.Motto,
-                MissionStatement = request.MissionStatement,
-                VisionStatement = request.MissionStatement,
-                LogoUrl = request.LogoUrl,
-                FaviconUrl = request.FaviconUrl,
-                PrimaryColor = request.PrimaryColor,                
-                SecondaryColor = request.SecondaryColor,
-                ContactEmail = request.ContactEmail,
-                ContactPhone = request.ContactPhone,
-                PhysicalAddress = request.PhysicalAddress,
-                // CreatedAt = request.DateTime.UtcNow,
-                IsActive = true
-            };
-
-            _logger.LogInformation("Before saving tenant...");
-            await _repository.AddAsync(tenant);
-            _logger.LogInformation("After saving tenan,t...");
-            return new TenantResponse(
-                tenant.Id,
-                tenant.Name,
-                tenant.Subdomain,
-                tenant.Motto,
-                tenant.MissionStatement,
-                tenant.VisionStatement,
-                tenant.LogoUrl,
-                tenant.FaviconUrl,
-                tenant.PrimaryColor,
-                tenant.SecondaryColor,
-                tenant.ContactEmail,
-                tenant.ContactPhone,
-                tenant.PhysicalAddress,
-                tenant.IsActive,
-                tenant.CreatedAt
-            );
+            throw new InvalidOperationException($"Subdomain '{cleanedSubdomain}' is already assigned to an active tenant.");
         }
-        catch (Exception ex) when (ex is not InvalidOperationException)
+
+        // 2. Defensive check if client-side IDs are mandatory, otherwise use Guid.NewGuid().ToString()
+        if (string.IsNullOrWhiteSpace(request.Id))
         {
-            _logger.LogError(ex, "An infrastructure execution fault occurred while generating tenant profile for ID: {TenantId}", request.Id);
-            throw new Exception("A fatal service error occurred while writing tenant details to persistent storage.", ex);
+            throw new ArgumentException("A valid tenant identifier must be supplied.");
         }
+        
+        var tenantId = request.Id.Trim();
+        var existingId = await _repository.GetByIdAsync(tenantId); // Check if ID is already claimed
+        if (existingId != null)
+        {
+            throw new InvalidOperationException($"A tenant with Id '{tenantId}' already exists.");
+        }
+
+        // 3. Mapping entity
+        var tenant = new Tenant
+        {
+            Id = tenantId,
+            Name = request.Name.Trim(),
+            Subdomain = cleanedSubdomain,
+            Motto = request.Motto?.Trim(),
+            MissionStatement = request.MissionStatement?.Trim(),
+            VisionStatement = request.VisionStatement?.Trim(), 
+            LogoUrl = request.LogoUrl,
+            FaviconUrl = request.FaviconUrl,
+            PrimaryColor = request.PrimaryColor ?? "#FFFFFF", // Default fail-safes                
+            SecondaryColor = request.SecondaryColor ?? "#000000",
+            ContactEmail = request.ContactEmail?.Trim(),
+            ContactPhone = request.ContactPhone?.Trim(),
+            PhysicalAddress = request.PhysicalAddress?.Trim(),
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+
+        _logger.LogInformation("Saving tenant profile for ID: {TenantId} with Subdomain: {Subdomain}", tenantId, cleanedSubdomain);
+        await _repository.AddAsync(tenant);
+
+        return new TenantResponse(
+            tenant.Id,
+            tenant.Name,
+            tenant.Subdomain,
+            tenant.Motto,
+            tenant.MissionStatement,
+            tenant.VisionStatement,
+            tenant.LogoUrl,
+            tenant.FaviconUrl,
+            tenant.PrimaryColor,
+            tenant.SecondaryColor,
+            tenant.ContactEmail,
+            tenant.ContactPhone,
+            tenant.PhysicalAddress,
+            tenant.IsActive,
+            tenant.CreatedAt
+        );
     }
-
+    catch (Exception ex) when (ex is not InvalidOperationException && ex is not ArgumentException)
+    {
+        _logger.LogError(ex, "A data storage fault occurred while generating tenant profile for ID: {TenantId}", request.Id);
+        throw new Exception("A fatal service error occurred while writing tenant records to persistent storage.", ex);
+    }
+}
     public async Task<TenantResponse?> GetTenantByIdAsync(string id)
     {
         try

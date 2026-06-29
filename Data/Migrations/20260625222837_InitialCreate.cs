@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Authentication.Migrations
+namespace Authentication.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
@@ -16,6 +16,7 @@ namespace Authentication.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    TenantId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -59,7 +60,20 @@ namespace Authentication.Migrations
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Subdomain = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    Motto = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    MissionStatement = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    VisionStatement = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LogoUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FaviconUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PrimaryColor = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SecondaryColor = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    RegistrationNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ContactEmail = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ContactPhone = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PhysicalAddress = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -198,17 +212,88 @@ namespace Authentication.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "RegistrarProfiles",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    EmployeeNumber = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Department = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    HireDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TenantId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RegistrarProfiles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RegistrarProfiles_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StudentProfiles",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    StudentNumber = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EnrollmentStatus = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TenantId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StudentProfiles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_StudentProfiles_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TeacherProfiles",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    EmployeeNumber = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Department = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    HireDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TenantId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TeacherProfiles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TeacherProfiles_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
-                name: "RoleNameIndex",
+                name: "IX_Role_Tenant_NormalizedName",
                 table: "AspNetRoles",
-                column: "NormalizedName",
+                columns: new[] { "TenantId", "NormalizedName" },
                 unique: true,
                 filter: "[NormalizedName] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "RoleNameIndex",
+                table: "AspNetRoles",
+                column: "NormalizedName");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetUserClaims_UserId",
@@ -231,26 +316,70 @@ namespace Authentication.Migrations
                 column: "NormalizedEmail");
 
             migrationBuilder.CreateIndex(
-                name: "IX_User_Tenant_UserName",
+                name: "IX_User_Tenant_Email",
                 table: "AspNetUsers",
-                columns: new[] { "TenantId", "NormalizedUserName" });
+                columns: new[] { "TenantId", "NormalizedEmail" },
+                unique: true,
+                filter: "[NormalizedEmail] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "UserNameIndex",
+                name: "IX_User_Tenant_UserName",
                 table: "AspNetUsers",
-                column: "NormalizedUserName",
+                columns: new[] { "TenantId", "NormalizedUserName" },
                 unique: true,
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "UserNameIndex",
+                table: "AspNetUsers",
+                column: "NormalizedUserName");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RefreshToken_Tenant_Token",
                 table: "RefreshTokens",
-                columns: new[] { "TenantId", "Token" });
+                columns: new[] { "TenantId", "Token" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_UserId",
                 table: "RefreshTokens",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RegistrarProfile_Tenant_EmployeeNumber",
+                table: "RegistrarProfiles",
+                columns: new[] { "TenantId", "EmployeeNumber" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RegistrarProfiles_UserId",
+                table: "RegistrarProfiles",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentProfile_Tenant_StudentNumber",
+                table: "StudentProfiles",
+                columns: new[] { "TenantId", "StudentNumber" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StudentProfiles_UserId",
+                table: "StudentProfiles",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherProfile_Tenant_EmployeeNumber",
+                table: "TeacherProfiles",
+                columns: new[] { "TenantId", "EmployeeNumber" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherProfiles_UserId",
+                table: "TeacherProfiles",
+                column: "UserId",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -273,6 +402,15 @@ namespace Authentication.Migrations
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
+
+            migrationBuilder.DropTable(
+                name: "RegistrarProfiles");
+
+            migrationBuilder.DropTable(
+                name: "StudentProfiles");
+
+            migrationBuilder.DropTable(
+                name: "TeacherProfiles");
 
             migrationBuilder.DropTable(
                 name: "Tenants");

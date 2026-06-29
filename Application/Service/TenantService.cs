@@ -5,49 +5,48 @@ namespace Authentication.Application.Service;
 public class TenantService : ITenantService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private string? _currentTenantId;
+    private string? _overrideTenantId; // Only set by SetTenant()
 
     public TenantService(IHttpContextAccessor httpContextAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
-        ResolveTenantFromSubdomain();
+        // ✅ Don't resolve here — HttpContext may not exist yet
     }
 
-    // Change the return type to string? (nullable string)
     public string? GetCurrentTenantId()
     {
-        // DO NOT throw an exception here anymore! 
-        // Just return the string, which will be null during startup seeding.
-        return _currentTenantId;
+        // Manual override takes priority (used during seeding)
+        if (!string.IsNullOrEmpty(_overrideTenantId))
+            return _overrideTenantId;
+
+        // Lazily resolve from the current HTTP request
+        return ResolveTenantFromSubdomain();
     }
 
     public void SetTenant(string tenantId)
     {
-        _currentTenantId = tenantId?.ToLower().Trim();
+        _overrideTenantId = tenantId?.ToLower().Trim();
     }
 
-    private void ResolveTenantFromSubdomain()
+    private string? ResolveTenantFromSubdomain()
     {
         var context = _httpContextAccessor.HttpContext;
-        if (context == null) return;
+        if (context == null) return null;
 
-        var host = context.Request.Host.Host; 
+        var host = context.Request.Host.Host;
         var hostParts = host.Split('.');
 
         if (hostParts.Length > 2)
         {
             var subdomain = hostParts[0].ToLower();
             if (subdomain != "www" && subdomain != "api")
-            {
-                _currentTenantId = subdomain; 
-                return;
-            }
+                return subdomain;
         }
-        
-        // Fallback for Postman local testing via Headers
+
+        // Fallback for Postman/testing via header
         if (context.Request.Headers.TryGetValue("X-Tenant-Id", out var headerId))
-        {
-            _currentTenantId = headerId.ToString().ToLower().Trim();
-        }
+            return headerId.ToString().ToLower().Trim();
+
+        return null;
     }
 }

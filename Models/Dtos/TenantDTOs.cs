@@ -15,9 +15,10 @@ public record CreateTenantRequest(
     string? FaviconUrl,
     string? PrimaryColor,
     string? SecondaryColor,
-    string? ContactEmail,
+    string ContactEmail,
     string? ContactPhone,
-    string? PhysicalAddress,   
+    string? PhysicalAddress,    
+    // string? Role,    
     bool IsActive
     // DateTime CreateAt
     );
@@ -38,4 +39,13 @@ public record TenantResponse(
     string? PhysicalAddress,   
     bool IsActive,
     DateTime CreatedAt 
+);
+
+
+public record TenantCreateResponse(
+     string Id, 
+    string Name, 
+    string Subdomain,
+     bool IsActive
+
 );

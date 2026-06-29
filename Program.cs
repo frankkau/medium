@@ -39,8 +39,16 @@ builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 builder.Services.AddScoped<ITenantAdminService, TenantAdminService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
+builder.Services.AddScoped<ITeacherService, TeacherService>();
+builder.Services.AddScoped<IRegistrarRepository, RegistrarRepository>();
+builder.Services.AddScoped<IRegistrarService, RegistrarService>();
+builder.Services.AddScoped<IClassroomService, ClassroomService>();
 
-builder.Services.AddControllers();
 // Program.cs - Make sure this section is exactly like this
 builder.Services.AddAuthentication(options =>
 {
@@ -98,11 +106,21 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+if (app.Environment.IsDevelopment())
+{
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "School Management API";
+        options.Theme = ScalarTheme.DeepSpace;   // or .Default .Moon .Purple .Solarized
+        options.DefaultHttpClient = new(ScalarTarget.CSharp, ScalarClient.HttpClient);
+        options.AddPreferredSecuritySchemes("Bearer");    // pre-selects JWT auth in the UI
+    });
+}
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    // app.MapScalarApiReference();
 }
 
 // 1. Move CORS to the absolute top of the pipeline
@@ -124,88 +142,109 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<ApplicationDbContext>();
     var userManager = services.GetRequiredService<UserManager<User>>();
-    
-    // FIX 1: Resolve the newly configured RoleManager for tenant isolation
     var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
     var tenantService = services.GetRequiredService<ITenantService>();
 
-    context.Database.EnsureCreated();
+    context.Database.Migrate();
 
-    // 1. Seed Tenants
+    // =========================================================================
+    // 1. Seed Tenants (no tenant context needed — Tenants table has no filter)
+    // =========================================================================
     if (!context.Tenants.Any())
     {
         context.Tenants.AddRange(
-            new Tenant { Id = "alpha-id", Name = "Alpha School", Subdomain = "alpha", IsActive = true },
-            new Tenant { Id = "beta-id", Name = "Beta College", Subdomain = "beta", IsActive = true }
+            new Tenant { Id = "alpha", Name = "Alpha School", Subdomain = "alpha", IsActive = true },
+            new Tenant { Id = "beta",  Name = "Beta College",  Subdomain = "beta",  IsActive = true }
         );
-        context.SaveChanges();
+        await context.SaveChangesAsync();
     }
 
-    // 2. Seed Alpha Users & Roles
-    if (!context.Users.IgnoreQueryFilters().Any(u => u.UserName == "teacher@alpha.com"))
+    // =========================================================================
+    // 2. Seed Alpha Tenant — Roles + Admin User
+    // =========================================================================
+    tenantService.SetTenant("alpha");
+
+    foreach (var role in new[] { "Admin", "Teacher", "Student", "Registrar" })
     {
-        // Explicitly target the Alpha context
-        tenantService.SetTenant("alpha"); 
-
-        // FIX 2: Create the role specifically within the alpha tenant boundary
-        const string alphaRoleName = "Teacher";
-        if (!await roleManager.RoleExistsAsync(alphaRoleName))
+        if (!await context.Roles.IgnoreQueryFilters()
+                .AnyAsync(r => r.NormalizedName == role.ToUpper() && r.TenantId == "alpha"))
         {
-            // Note: DB Tenant tracking assigns TenantId auto-magically here on Save
-            await roleManager.CreateAsync(new ApplicationRole { Name = alphaRoleName });
+            var roleResult = await roleManager.CreateAsync(new ApplicationRole
+            {
+                Id             = Guid.NewGuid().ToString(),
+                Name           = role,
+                NormalizedName = role.ToUpper(),
+                TenantId       = "alpha"
+            });
+
+            if (!roleResult.Succeeded)
+                throw new Exception($"[Alpha] Role '{role}' creation failed: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
         }
+    }
 
-        var alphaUser = new User
+    if (!await context.Users.IgnoreQueryFilters()
+            .AnyAsync(u => u.UserName == "admin@alpha.com" && u.TenantId == "alpha"))
+    {
+        var alphaAdmin = new User
         {
-            Id = Guid.NewGuid().ToString(),
-            UserName = "teacher@alpha.com",
-            Email = "teacher@alpha.com",
-            FullName = "Alpha Instructor",
-            TenantId = "alpha" 
+            Id       = Guid.NewGuid().ToString(),
+            UserName = "admin@alpha.com",
+            Email    = "admin@alpha.com",
+            FullName = "Alpha Administrator",
+            TenantId = "alpha"
         };
-        
-        var result = await userManager.CreateAsync(alphaUser, "Password123!");
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new Exception($"Failed to seed Alpha user: {errors}");
-        }
 
-        // FIX 3: Securely attach the user to the tenant role
-        await userManager.AddToRoleAsync(alphaUser, alphaRoleName);
+        var createResult = await userManager.CreateAsync(alphaAdmin, "Password123!");
+        if (!createResult.Succeeded)
+            throw new Exception($"[Alpha] User creation failed: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
+
+        var roleResult = await userManager.AddToRoleAsync(alphaAdmin, "Admin");
+        if (!roleResult.Succeeded)
+            throw new Exception($"[Alpha] Role assignment failed: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
     }
 
-    // 3. Seed Beta Users & Roles
-    if (!context.Users.IgnoreQueryFilters().Any(u => u.UserName == "admin@beta.com"))
+    // =========================================================================
+    // 3. Seed Beta Tenant — Roles + Admin User
+    // =========================================================================
+    tenantService.SetTenant("beta");
+
+    foreach (var role in new[] { "Admin", "Teacher", "Student", "Registrar" })
     {
-        // Switch execution context to the Beta context
-        tenantService.SetTenant("beta"); 
-
-        // FIX 4: Create the role specifically within the beta tenant boundary
-        const string betaRoleName = "Admin";
-        if (!await roleManager.RoleExistsAsync(betaRoleName))
+        if (!await context.Roles.IgnoreQueryFilters()
+                .AnyAsync(r => r.NormalizedName == role.ToUpper() && r.TenantId == "beta"))
         {
-            await roleManager.CreateAsync(new ApplicationRole { Name = betaRoleName });
+            var roleResult = await roleManager.CreateAsync(new ApplicationRole
+            {
+                Id             = Guid.NewGuid().ToString(),
+                Name           = role,
+                NormalizedName = role.ToUpper(),
+                TenantId       = "beta"
+            });
+
+            if (!roleResult.Succeeded)
+                throw new Exception($"[Beta] Role '{role}' creation failed: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
         }
+    }
 
-        var betaUser = new User
+    if (!await context.Users.IgnoreQueryFilters()
+            .AnyAsync(u => u.UserName == "admin@beta.com" && u.TenantId == "beta"))
+    {
+        var betaAdmin = new User
         {
-            Id = Guid.NewGuid().ToString(),
+            Id       = Guid.NewGuid().ToString(),
             UserName = "admin@beta.com",
-            Email = "admin@beta.com",
+            Email    = "admin@beta.com",
             FullName = "Beta Administrator",
             TenantId = "beta"
         };
-        
-        var result = await userManager.CreateAsync(betaUser, "Password123!");
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new Exception($"Failed to seed Beta user: {errors}");
-        }
 
-        // FIX 5: Securely attach the user to the tenant role
-        await userManager.AddToRoleAsync(betaUser, betaRoleName);
+        var createResult = await userManager.CreateAsync(betaAdmin, "Password123!");
+        if (!createResult.Succeeded)
+            throw new Exception($"[Beta] User creation failed: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
+
+        var roleResult = await userManager.AddToRoleAsync(betaAdmin, "Admin");
+        if (!roleResult.Succeeded)
+            throw new Exception($"[Beta] Role assignment failed: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
     }
 }
 

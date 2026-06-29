@@ -4,16 +4,19 @@ using Authentication.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Authentication.Migrations
+namespace Authentication.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260626102159_UpdateTenantFilters")]
+    partial class UpdateTenantFilters
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -46,13 +49,11 @@ namespace Authentication.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedName")
-                        .IsUnique()
-                        .HasDatabaseName("RoleNameIndex")
-                        .HasFilter("[NormalizedName] IS NOT NULL");
+                        .HasDatabaseName("RoleNameIndex");
 
                     b.HasIndex("TenantId", "NormalizedName")
                         .IsUnique()
-                        .HasDatabaseName("IX_Role_Tenant_Name")
+                        .HasDatabaseName("IX_Role_Tenant_NormalizedName")
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
@@ -100,9 +101,118 @@ namespace Authentication.Migrations
                     b.HasIndex("UserId");
 
                     b.HasIndex("TenantId", "Token")
+                        .IsUnique()
                         .HasDatabaseName("IX_RefreshToken_Tenant_Token");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Authentication.Models.Entity.RegistrarProfile", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmployeeNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("HireDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "EmployeeNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_RegistrarProfile_Tenant_EmployeeNumber");
+
+                    b.ToTable("RegistrarProfiles");
+                });
+
+            modelBuilder.Entity("Authentication.Models.Entity.StudentProfile", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EnrollmentStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StudentNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "StudentNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_StudentProfile_Tenant_StudentNumber");
+
+                    b.ToTable("StudentProfiles");
+                });
+
+            modelBuilder.Entity("Authentication.Models.Entity.TeacherProfile", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmployeeNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("HireDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "EmployeeNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_TeacherProfile_Tenant_EmployeeNumber");
+
+                    b.ToTable("TeacherProfiles");
                 });
 
             modelBuilder.Entity("Authentication.Models.Entity.Tenant", b =>
@@ -231,12 +341,17 @@ namespace Authentication.Migrations
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
+                        .HasDatabaseName("UserNameIndex");
+
+                    b.HasIndex("TenantId", "NormalizedEmail")
                         .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("IX_User_Tenant_Email")
+                        .HasFilter("[NormalizedEmail] IS NOT NULL");
 
                     b.HasIndex("TenantId", "NormalizedUserName")
-                        .HasDatabaseName("IX_User_Tenant_UserName");
+                        .IsUnique()
+                        .HasDatabaseName("IX_User_Tenant_UserName")
+                        .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -358,6 +473,39 @@ namespace Authentication.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Authentication.Models.Entity.RegistrarProfile", b =>
+                {
+                    b.HasOne("Authentication.Models.Entity.User", "User")
+                        .WithOne()
+                        .HasForeignKey("Authentication.Models.Entity.RegistrarProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Authentication.Models.Entity.StudentProfile", b =>
+                {
+                    b.HasOne("Authentication.Models.Entity.User", "User")
+                        .WithOne("StudentProfile")
+                        .HasForeignKey("Authentication.Models.Entity.StudentProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Authentication.Models.Entity.TeacherProfile", b =>
+                {
+                    b.HasOne("Authentication.Models.Entity.User", "User")
+                        .WithOne()
+                        .HasForeignKey("Authentication.Models.Entity.TeacherProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Authentication.Models.Entity.ApplicationRole", null)
@@ -412,6 +560,8 @@ namespace Authentication.Migrations
             modelBuilder.Entity("Authentication.Models.Entity.User", b =>
                 {
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("StudentProfile");
                 });
 #pragma warning restore 612, 618
         }
